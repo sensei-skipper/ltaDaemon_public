@@ -1,0 +1,186 @@
+%Definition of signals.
+V1A =           000000000000000000000000000001
+V1B =           000000000000000000000000000010
+V2C =           000000000000000000000000000100
+V3A =           000000000000000000000000001000
+V3B =           000000000000000000000000010000
+H1A =           000000000000000000000000100000
+H1B =           000000000000000000000001000000
+H2C =           000000000000000000000010000000
+H3A =           000000000000000000000100000000
+H3B =           000000000000000000001000000000
+SWA =           000000000000000000010000000000
+SWB =           000000000000000000100000000000
+RGA =           000000000000000001000000000000
+RGB =           000000000000000010000000000000
+OGA =           000000000000000100000000000000
+OGB =           000000000000001000000000000000
+DGA =           000000000000010000000000000000
+DGB =           000000000000100000000000000000
+TGA =           000000000001000000000000000000
+TGB =           000000000010000000000000000000
+ECA =           000000001000000000000000000000
+ECB =           000000010000000000000000000000
+ECC =           000000100000000000000000000000
+ECD =           000001000000000000000000000000
+HD1 =           000010000000000000000000000000
+HD2 =           000100000000000000000000000000
+
+
+%here we define status of clocks
+
+%Mapping skipper clocks to LTA
+%Horizontal clocks
+%H1A = H1L
+%H3A = H3L
+%H1B = H1U
+%H3B = H3U
+%H2C = H2L/U
+
+%MODEL    = V1A | V1B | V2C | V3A | V3B | H1A | H1B | H2C | H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_3DG = V1A | V1B |       V3A | V3B | H1A |                   H3B | SWA | SWB | RGA | RGB | OGA | OGB |             TGA | TGB 
+STATE_4   = V1A | V1B |       V3A | V3B | H1A |       H2C |       H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_5   = V1A | V1B |       V3A | V3B |             H2C |                         RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_6   = V1A | V1B |       V3A | V3B |       H1B | H2C | H3A |                   RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_7   = V1A | V1B |       V3A | V3B |       H1B |       H3A |                   RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_8   = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_9   = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_10  = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_10RG= V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                         OGA | OGB | DGA | DGB | TGA | TGB
+STATE_10RB= V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                                     DGA | DGB | TGA | TGB
+
+%Vertical clocks
+%MODEL   = V1A | V1B | V2C | V3A | V3B | H1A | H1B | H2C | H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB
+STATE_11 = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB            
+STATE_12 = V1A | V1B |                   H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB            
+STATE_13 = V1A | V1B | V2C |             H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB            
+STATE_14 =             V2C |             H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB            
+STATE_15 =             V2C | V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB            
+STATE_16 =                   V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB | TGA | TGB    
+
+%%States for CDS
+%MODEL   = V1A | V1B | V2C | V3A | V3B | H1A | H1B | H2C | H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1 | HD2
+%Pedestal CDS
+STATE_8B = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1      
+STATE_8C = V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            
+%Signal CDS
+STATE_10A= V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB |       HD2
+STATE_10B= V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB        
+
+
+%here we define loop variables
+%Small Skipper
+NROW        = 700 
+NCOL        = 400
+
+%Large 4k Skipper
+%NROW        = 2200
+%NCOL        = 500
+ 
+NSAMP       = 1  % SKIPPER SAMPLES
+%robin           = 0  %BINNING FACTOR FOR ROWS 
+
+
+%Dummy variable for fits header: Physical parameters of the CCD
+CCDNPRES=  7  
+
+%Small Skipper
+CCDNROW = 1248
+CCDNCOL = 724
+
+%Large 4k Skipper
+%CCDNROW = 4126
+%CCDNCOL = 886
+
+%here we define delay variables
+delay_H_overlap       = 100                   % Time between phases of Horizontal clock  
+delay_Integ_Width     = 4000                 % Integration time
+delay_PedlInteg_after = 30
+
+delay_SWhigh          = 50
+delay_SW_after        = 30
+delay_H_after         = 10
+delay_og_low     = 100                   % Time during OG and SW down. Charge going back into the SW from the SN
+delay_V_Overlap       = 1000                   % Time between phases of Vertical clock
+delay_RG_Width = 100
+delay_RG_after =30
+
+%here is the program
+delay CCDNPRES   %Just for the variable to appear en header
+delay CCDNROW    %Just for the variable to appear en header
+delay CCDNCOL    %Just for the variable to appear en header
+%
+loop NROW
+	%
+	loop NCOL
+		%
+		status STATE_3DG            
+		delay delay_H_overlap
+		status STATE_4              
+		delay delay_H_overlap
+		status STATE_5              
+		delay delay_H_overlap
+		status STATE_6              
+		delay delay_H_overlap
+		status STATE_7              
+		delay delay_H_overlap
+		status STATE_8                  
+		delay delay_H_overlap
+	        %SKIPPER%------------------------------------------------------------------
+                status STATE_10RG           	   
+	        delay delay_RG_Width 
+		%
+		loop  NSAMP      % BEGIN Loop SKIPPER SAMPLES
+			status STATE_8                
+			delay delay_RG_after          
+		    %START OF PEDESTAL INTEGRATION%---------------------------------------
+			status STATE_8B               
+			delay delay_Integ_Width
+			%status STATE_8C               
+			%delay delay_PedlInteg_after           
+			status STATE_9                
+			delay delay_SWhigh
+			%status STATE_10               
+			%delay delay_SW_after           
+			%END OF PEDESTAL INTEGRATION%-----------------------------------------
+		    %
+			%START OF SIGNAL INTEGRATION%-----------------------------------------
+			status STATE_10A              
+			delay delay_Integ_Width
+			%status STATE_10B              
+			%delay delay_H_after           			
+		    %END OF SIGNAL INTEGRATION%-------------------------------------------
+		    %
+			status STATE_10RB              
+			delay delay_og_low
+			status STATE_10RG             
+			delay delay_RG_Width           	
+		endsync
+		%
+		status STATE_9                
+		delay delay_SWhigh
+		%status STATE_8                
+	        %delay delay_H_after           
+		%
+	endsync
+	% 
+	        status STATE_11                    
+                delay delay_V_Overlap
+		status STATE_12                    %V3 -> LOW
+		delay delay_V_Overlap
+		status STATE_13                    %V2 -> HIGH  
+		delay delay_V_Overlap
+		status STATE_14                    %V2 -> LOW         
+		delay delay_V_Overlap
+		status STATE_15                    %V3 -> HIGH
+		delay delay_V_Overlap
+	        %
+	        status STATE_16                        %V2 -> LOW; Tg -> HIGH
+                delay delay_V_Overlap
+endsync
+		
+		
+		
+		
+		
+		

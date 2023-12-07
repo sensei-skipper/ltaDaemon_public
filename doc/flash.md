@@ -1,0 +1,57 @@
+# Programming the LTA
+The LTA is programmed in the usual way using Vivado:
+* Connect to the FPGA through the Digilent JTAG programmer and a micro-USB cable
+* Add a configuration memory device to the FPGA: part number mt25ql512
+* Program the configuration memory device using the .mcs and .prm files
+
+The flash page containing the IP address and other configuration will not be modified.
+
+# Changing the IP
+
+boot in root mode: on the DIP switch, set position 4 to "ON" (position 1 should already be ON, keep it that way)
+log in through the UART: password is lta-root
+
+read 0x03FFFF00
+Performing Flash Read Operation...
+
+Flash Start Address:    0x03FFFF00
+Flash End Address:      0x03FFFFFF
+Offset(h):      0x00    0x01    0x02    0x03    0x04    0x05    0x06    0x07
+
+0x03FFFF00:     0x00    0x02    0xFF    0xFF    0x07    0x11    0xE3    0x07
+0x03FFFF08:     0x71    0x30    0xBE    0x0C    0xAD    0x62    0x02    0x84
+0x03FFFF10:     0x00    0x02    0xFF    0xFF    0x07    0x11    0xE3    0x07
+0x03FFFF18:     0xF2    0x47    0x07    0x77    0x0F    0x37    0x12    0xFE
+0x03FFFF20:     0x07    0x00    0x02    0xAB    0x07    0x85    0xA8    0xC0
+0x03FFFF28:     0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF
+0x03FFFF30:     0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF
+0x03FFFF38:     0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF    0xFF
+
+read IP bytes: read 0x03FFFF24 4
+just the LSB: read 0x03FFFF24 1
+sector would be 0x03FFF000 - 0x03FFFFFF
+
+erase 0x03FFFF00
+write qword 0x03FFFF00 0xFFFF0200
+write qword 0x03FFFF04 0x07E31107
+write qword 0x03FFFF08 0x0CBE3071
+write qword 0x03FFFF0C 0x840262AD
+write qword 0x03FFFF10 0xFFFF0200
+write qword 0x03FFFF14 0x07E31107
+write qword 0x03FFFF18 0x770747F2
+write qword 0x03FFFF1C 0xFE12370F
+write qword 0x03FFFF20 0xAB020007
+write qword 0x03FFFF24 0xC0A88507
+
+flash info
+Board Information:
+--> Base Address:       0x03FFFF00:
+--> Firmware version:   2.0
+--> Firmware date:      7/17/2019
+--> Firmware hash:      0CBE3071840262AD
+--> Software version:   2.0
+--> Software date:      7/17/2019
+--> Software hash:      770747F2FE12370F
+--> Unique ID:          0xAB020007
+--> Board IP:           192.168.133.7
+

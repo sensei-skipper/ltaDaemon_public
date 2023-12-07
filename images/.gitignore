@@ -1,0 +1,8 @@
+# BackUp
+*~
+*.swp
+
+# Images and raw data
+*.fits
+*.fz
+*.dat

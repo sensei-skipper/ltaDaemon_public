@@ -1,0 +1,144 @@
+<!--new sequencer for SMART SKIPPER-->
+
+<variables>
+    <state name="V1A" val="000000000000000000000000000001"/>
+    <state name="V1B" val="000000000000000000000000000010"/>
+    <state name="V2C" val="000000000000000000000000000100"/>
+    <state name="V3A" val="000000000000000000000000001000"/>
+    <state name="V3B" val="000000000000000000000000010000"/>
+    <state name="H1A" val="000000000000000000000000100000"/>
+    <state name="H1B" val="000000000000000000000001000000"/>
+    <state name="H2C" val="000000000000000000000010000000"/>
+    <state name="H3A" val="000000000000000000000100000000"/>
+    <state name="H3B" val="000000000000000000001000000000"/>
+    <state name="SWA" val="000000000000000000010000000000"/>
+    <state name="SWB" val="000000000000000000100000000000"/>
+    <state name="RGA" val="000000000000000001000000000000"/>
+    <state name="RGB" val="000000000000000010000000000000"/>
+    <state name="OGA" val="000000000000000100000000000000"/>
+    <state name="OGB" val="000000000000001000000000000000"/>
+    <state name="DGA" val="000000000000010000000000000000"/>
+    <state name="DGB" val="000000000000100000000000000000"/>
+    <state name="TGA" val="000000000001000000000000000000"/>
+    <state name="TGB" val="000000000010000000000000000000"/>
+    <state name="ECA" val="000000001000000000000000000000"/>
+    <state name="ECB" val="000000010000000000000000000000"/>
+    <state name="ECC" val="000000100000000000000000000000"/>
+    <state name="ECD" val="000001000000000000000000000000"/>
+    <state name="HD1" val="000010000000000000000000000000"/>
+    <state name="HD2" val="000100000000000000000000000000"/>
+
+    <state name="STATE_3DG"  val="V1A | V1B |       V3A | V3B | H1A |                   H3B | SWA | SWB | RGA | RGB | OGA | OGB |             TGA | TGB            "/>
+    <state name="STATE_4"    val="V1A | V1B |       V3A | V3B | H1A |       H2C |       H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_5"    val="V1A | V1B |       V3A | V3B |             H2C |                         RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_6"    val="V1A | V1B |       V3A | V3B |       H1B | H2C | H3A |                   RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_7"    val="V1A | V1B |       V3A | V3B |       H1B |       H3A |                   RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_8"    val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_9"    val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_10"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_10RG" val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                         OGA | OGB | DGA | DGB | TGA | TGB            "/>
+    <state name="STATE_10RB" val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                                     DGA | DGB | TGA | TGB            "/>
+
+    <state name="STATE_11"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB                        "/>
+    <state name="STATE_12"   val="V1A | V1B |                   H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB                        "/>
+    <state name="STATE_13"   val="V1A | V1B | V2C |             H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB                        "/>
+    <state name="STATE_14"   val="            V2C |             H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB                        "/>
+    <state name="STATE_15"   val="            V2C | V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB                        "/>
+    <state name="STATE_16"   val="                  V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB |                         DGA | DGB | TGA | TGB            "/>
+
+    <state name="STATE_8B"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1      "/>
+    <state name="STATE_8C"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1      "/>
+
+    <state name="STATE_10A"  val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB |       HD2"/>
+    <state name="STATE_10B"  val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
+
+    <var name="NROW" val="50"/>
+    <var name="NCOL" val="450"/>
+
+    <var name="NSAMP" val="10"/>
+
+    <var name="CCDNPRES" val="7"/>
+    <var name="CCDNROW" val="1248"/>
+    <var name="CCDNCOL" val="724"/>
+
+    <var name="delay_H_overlap"           val="15"/>
+    <var name="delay_Integ_Width"         val="350"/>
+    <var name="delay_PedlInteg_after"     val="5"/>
+    <var name="delay_integ_after_SW_high" val="4"/>
+    <var name="delay_SWhigh"              val="8"/>
+    <var name="delay_SW_after"            val="5"/>
+    <var name="delay_H_after"             val="2"/>
+    <var name="delay_og_low"              val="15"/>
+    <var name="delay_V_Overlap"           val="150"/>
+    <var name="delay_RG_Width"            val="15"/>
+    <var name="delay_RG_after"            val="5"/>
+</variables>
+
+<dynamicVariables/>
+
+<!--horizontal_step has large delays because sequencer seems to have problems with a short recipe in the innermost loop-->
+<recipes>
+    <recipe name="vertical">
+        <step state="STATE_11"   delay="delay_V_Overlap"/>
+        <step state="STATE_12"   delay="delay_V_Overlap"/>
+        <step state="STATE_13"   delay="delay_V_Overlap"/>
+        <step state="STATE_14"   delay="delay_V_Overlap"/>
+        <step state="STATE_15"   delay="delay_V_Overlap"/>
+        <step state="STATE_16"   delay="delay_V_Overlap"/>
+    </recipe>
+    <recipe name="horizontal_step">
+        <step state="STATE_9"    delay="delay_SWhigh"/>
+        <step state="STATE_3DG"  delay="delay_H_overlap"/>
+        <step state="STATE_4"    delay="delay_H_overlap"/>
+        <step state="STATE_5"    delay="delay_H_overlap"/>
+        <step state="STATE_6"    delay="delay_H_overlap"/>
+        <step state="STATE_7"    delay="delay_H_overlap"/>
+        <step state="STATE_8"    delay="delay_H_overlap"/>
+        <step state="STATE_10RG" delay="delay_RG_Width"/>
+    </recipe>
+    <recipe name="horizontal_12">
+        <step state="STATE_9"    delay="delay_SWhigh"/>
+        <step state="STATE_3DG"  delay="delay_H_overlap"/>
+        <step state="STATE_4"    delay="delay_H_overlap"/>
+        <step state="STATE_5"    delay="delay_H_overlap"/>
+        <step state="STATE_6"    delay="delay_H_overlap"/>
+        <step state="STATE_7"    delay="delay_H_overlap"/>
+        <step state="STATE_8"    delay="delay_H_overlap"/>
+        <step state="STATE_10RG" delay="delay_RG_Width"/>
+    </recipe>
+    <recipe name="skipper">
+        <step state="STATE_8"    delay="delay_RG_after"/>
+        <step state="STATE_8B"   delay="delay_Integ_Width"/>
+        <step state="STATE_8C"   delay="delay_integ_after_SW_high"/>
+        <step state="STATE_9"    delay="delay_SWhigh"/>
+        <step state="STATE_10A"  delay="delay_Integ_Width"/>
+        <step state="STATE_10A"  delay="delay_integ_after_SW_high"/>
+        <step state="STATE_10RB" delay="delay_og_low"/>
+        <step state="STATE_10RG" delay="delay_RG_Width"/>
+    </recipe>
+    <recipe name="horizontal1">
+        <step state="STATE_3DG"  delay="delay_H_overlap"/>
+        <step state="STATE_4"    delay="delay_H_overlap"/>
+        <step state="STATE_5"    delay="delay_H_overlap"/>
+        <step state="STATE_6"    delay="delay_H_overlap"/>
+        <step state="STATE_7"    delay="delay_H_overlap"/>
+        <step state="STATE_8"    delay="delay_H_overlap"/>
+        <step state="STATE_10RG" delay="delay_RG_Width"/>
+    </recipe>
+    <recipe name="horizontal2">
+        <step state="STATE_9"    delay="delay_SWhigh"/>
+    </recipe>
+</recipes>
+
+<!--<recipe name="horizontal_step" n="100"/>-->
+
+<!--<recipe name="vertical" n="700"/>-->
+
+<sequence>
+    <recipe name="vertical" n="NROW">
+        <recipe name="horizontal_12" n="NCOL">
+            <recipe name="skipper" n="NSAMP">
+            </recipe>
+        </recipe>
+    </recipe>
+</sequence>
