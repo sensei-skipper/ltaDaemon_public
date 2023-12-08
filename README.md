@@ -1,5 +1,7 @@
 # LTA Daemon
 
+**This is a subtree of the main ltaDaemon repository (which contains SENSEI-specific scripts, and is private). Don't push directly to ltaDaemon_public.**
+
 [![Build Status](https://travis-ci.com/sensei-skipper/ltaDaemon.svg?token=8p9xsuLBwgkozchbZDsW&branch=master)](https://travis-ci.com/sensei-skipper/ltaDaemon)
 [![License](https://img.shields.io/badge/license-unknown-lightgrey.svg)](../../)
 
