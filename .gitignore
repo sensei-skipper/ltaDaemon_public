@@ -1,0 +1,38 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# BackUp
+*~
+*.swp
+
+# Images and raw data
+*.fits
+*.fz
+*.dat
+*.root
+*.csv
+*.xml
+*.png
+*.pdf
+
+# logs
+*.log
