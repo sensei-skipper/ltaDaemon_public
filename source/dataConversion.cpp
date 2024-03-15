@@ -19,6 +19,16 @@
 #include "dataConversion.h"
 #include "helperFunctions.h"
 
+// data format notes
+// raw data (packer/src/raw_smart_buffer_rw.vhd):
+// zeros_4 & channel_id & header & zeros_36 & s_axis_tdata(17 downto 0);
+// CDS data (packer/src/pix_seq_1ch_rw.vhd):
+// word_out_1 <= zeros_4 & "1100" & zeros_24 & fifo_a_dout; etc
+//
+// the zeros_4 gets replaced by a counter later, so:
+// there is always a 4-bit counter and 4-bit ID
+// image data: 24 zeros, 32-bit CDS sample
+// raw data: 2-bit header, 36 zeros, 18-bit ADC sample
 
 #define CNTR_FIRST_BIT_POSITION_IN_64_BIT_WORD 60
 #define CNTR_NBITS 4
@@ -667,31 +677,39 @@ int DataConversion::bin_to_fits(const string outFileName, const string tempFileN
 
     ////64-bit word from packer
     uint64_t word64;
-    while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int32_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+    // number of words buffered in pixelsVectorMap
+    int bufferedWords = 0;
+    bool moreData;
+    do {
+        moreData = reader.getWord(word64);
+        if (moreData) {
+            uint8_t idValue = dataFileReader::decodeID(word64);
+            int32_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
 
-        //SAVE PIXEL INFORMATION HERE
-        pixelsVectorMap[idValue].push_back(-1 * dataValueSigned);
-
-        if (pixelsVectorMap.size()==LTA_NUMBER_OF_CHANNELS) {//we've seen all channels, so it's safe to assign the channels to HDUs
-            int hdunum = 1;
-            for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-                //C++ maps are sorted, so the HDUs are automatically written in channel order
-                if (chPixIt->second.size() >= chunkSize) {
-                    outf.dump_to_fits(hdunum, chPixIt->second, true, chunkSize);
-                }
-                hdunum++;
-            }
-        } else if (pixelsVectorMap.size()>LTA_NUMBER_OF_CHANNELS) {
-            LOG_F(ERROR, "too many channels! %ld channels where %d were expected:", pixelsVectorMap.size(), LTA_NUMBER_OF_CHANNELS);
-            for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-                LOG_F(ERROR, "chID %d", chPixIt->first);
-            }
-            LOG_F(ERROR, "stop processing this image");
-            return 1;
+            //SAVE PIXEL INFORMATION HERE
+            pixelsVectorMap[idValue].push_back(-1 * dataValueSigned);
+            bufferedWords++;
         }
-    } //while
+
+        if (!moreData || bufferedWords >= chunkSize) {
+            if (pixelsVectorMap.size()==LTA_NUMBER_OF_CHANNELS) {//we've seen all channels, so it's safe to assign the channels to HDUs
+                int hdunum = 1;
+                for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
+                    //C++ maps are sorted, so the HDUs are automatically written in channel order
+                    outf.dump_to_fits(hdunum, chPixIt->second, true, -1);
+                    hdunum++;
+                }
+                bufferedWords = 0;
+            } else if (pixelsVectorMap.size()>LTA_NUMBER_OF_CHANNELS) {
+                LOG_F(ERROR, "too many channels! %ld channels where %d were expected:", pixelsVectorMap.size(), LTA_NUMBER_OF_CHANNELS);
+                for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
+                    LOG_F(ERROR, "chID %d", chPixIt->first);
+                }
+                LOG_F(ERROR, "stop processing this image");
+                return 1;
+            }
+        }
+    } while (moreData);
 
     //aca cerrar loop de varios archivos
 
@@ -700,16 +718,11 @@ int DataConversion::bin_to_fits(const string outFileName, const string tempFileN
     bool noData = true; //true if all HDUs are totally empty
     if (reader.getMissingPackets() != 0) dataGood = false;
     if (reader.getDataGaps() != 0) dataGood = false;
+    if (pixelsVectorMap.size() != LTA_NUMBER_OF_CHANNELS) dataGood = false;
     for( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-        //C++ maps are sorted, so the HDUs are automatically written in channel order
-        auto chID = chPixIt->first;
-
-        outf.dump_to_fits(hdunum, chPixIt->second);
-        dataGood &= outf.save_counts(hdunum, chID, runNum);
-
+        dataGood &= outf.save_counts(hdunum, chPixIt->first, runNum);
         hdunum++;
     }
-    if (hdunum != 1 + LTA_NUMBER_OF_CHANNELS) dataGood = false;
 
     outf.close(); //close output FITS file
     LOG_IF_F(INFO, dataGood, "data good: no missing data and all HDUs got the correct number of pixels");
@@ -808,7 +821,7 @@ template <typename T> int DataConversion::compute_pixel_value_smart(FitsWriter &
                 colInd[hduInd]+=pixelsAvailable;
                 usedPixInd+=pixelsAvailable;
             } else {//fill the row buffer and write to FITS
-                //fill the temporary vector of the Row of the image with all the samples
+                    //fill the temporary vector of the Row of the image with all the samples
                 for (int i=0; i<pixelsNeededInRow; i++){
                     fRowImageAll[hduInd][colInd[hduInd]+i] = pixelsVector[hduInd][usedPixInd+i];
                 }
@@ -952,12 +965,12 @@ int DataConversion::bin_to_raw(const string outFileName) {
     //output files
     ofstream myfile;
 
-    #ifdef USEROOT
-        TFile *fout;
-        TTree *dataTree;
-        dataVars dataEntry;
-    #endif
-	
+#ifdef USEROOT
+    TFile *fout;
+    TTree *dataTree;
+    dataVars dataEntry;
+#endif
+
     //create text file
     stringstream outFileNameCsv;
     outFileNameCsv << outFileName.c_str() << ".csv";
@@ -966,17 +979,17 @@ int DataConversion::bin_to_raw(const string outFileName) {
     stringstream outFileNameRoot;
     outFileNameRoot << outFileName.c_str() << ".root";
 
-    #ifdef USEROOT
-      fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
-      lastFilename_ = outFileNameRoot.str();
+#ifdef USEROOT
+    fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
+    lastFilename_ = outFileNameRoot.str();
 
-      dataTree = new TTree("data", "data");
-      //add Branches to tree
-      dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
-      dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
-      dataTree->Branch("id", &(dataEntry.id), "id/S");
-      dataTree->Branch("data", &(dataEntry.data), "data/I");
-    #endif
+    dataTree = new TTree("data", "data");
+    //add Branches to tree
+    dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
+    dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
+    dataTree->Branch("id", &(dataEntry.id), "id/S");
+    dataTree->Branch("data", &(dataEntry.data), "data/I");
+#endif
 
     dataFileReader reader(inFileNames_, gVerbosityTranslate);
 
@@ -1015,23 +1028,23 @@ int DataConversion::bin_to_raw(const string outFileName) {
             myfile << counterValue << ", " << idValue << ", " << hdrValue << ", "<< dataSigned[adcDataInd] << "\n";
 
             //fill root file
-	    #ifdef USEROOT
-                dataEntry.cntr = counterValue;
-                dataEntry.hdr = hdrValue;
-                dataEntry.id = idValue;
-                dataEntry.data = dataSigned[adcDataInd];
-                dataTree->Fill();
-	    #endif
+#ifdef USEROOT
+            dataEntry.cntr = counterValue;
+            dataEntry.hdr = hdrValue;
+            dataEntry.id = idValue;
+            dataEntry.data = dataSigned[adcDataInd];
+            dataTree->Fill();
+#endif
         }//end for 3 samples in one 64-bit word
 
     } //while
 
     //aca cerrar loop de varios archivos
     myfile.close();
-    #ifdef USEROOT
-        dataTree->Write();
-       fout->Close();
-    #endif
+#ifdef USEROOT
+    dataTree->Write();
+    fout->Close();
+#endif
 
     if (reader.getDataCount()==SMART_BUFFER_SIZE) {
         LOG_F(INFO, "data good: correct number of samples");
