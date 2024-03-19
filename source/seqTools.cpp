@@ -82,8 +82,8 @@ int main(int argc, char* argv[])
     seqHand.loadNewSequencer(seqFileName);
 
     cout << "\n======================================================================\n";
-    cout << "  It will take " << seqHand.calculateSequencerDuration() << " (" <<printTime(seqHand.calculateSequencerDuration()) << ") to execute this seqencer\n";
+    cout << "  It will take " << seqHand.calculateSequencerDuration() << "s (" <<printTime(seqHand.calculateSequencerDuration()) << ") to execute this seqencer\n";
+    cout << "  It will take " << seqHand.calculateSequencerTimeUntilFirstData() << "s (" <<printTime(seqHand.calculateSequencerTimeUntilFirstData()) << ") to get the first data package\n";
     cout << "======================================================================\n";
-
     return 0;
 }

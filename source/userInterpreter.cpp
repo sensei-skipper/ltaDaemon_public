@@ -31,7 +31,7 @@
 //#define SP_REQ_TIME_INTERVAL 100 ////time interval between requests to the serial port in us
 
 #define RAW_STARTUP_TIMEOUT 5.0//maximum time (s) to wait for first data to arrive from the LTA, raw readout
-#define READ_STARTUP_TIMEOUT 30.0//maximum time (s) to wait for first data to arrive from the LTA, CDS readout
+#define READ_STARTUP_TIMEOUT 5.0//maximum time (s) to wait for first data to arrive from the LTA, CDS readout
 
 #define EXPOSURE_START_DELAY 5.0//how long we wait before adjusting voltages to their "exposure" values, in sec (this allows for clearing at the start of the sequencer)
 
@@ -1089,11 +1089,13 @@ int UserInterpreter::run_readout(const long sampsExpected)
 
         //start the sequencer
         run_seq();
+        LOG_F(INFO,"first data expected in: %s", printTime(sseq.getTimeUntilData()+exposure_seconds).c_str());
 
         int timeref;
         fits_get_system_time(readoutStartTime, &timeref, &status);
 
-        double startup_timeout = READ_STARTUP_TIMEOUT + exposure_seconds;
+        const double time_until_data = sseq.getTimeUntilData();
+        double startup_timeout = READ_STARTUP_TIMEOUT + exposure_seconds + time_until_data;
 
         bool doneClearing = false;
         timespec exposureStartTime;

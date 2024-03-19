@@ -93,7 +93,9 @@ class smartSequencerHandler
         void printSequencer();
         
         float calculateSequencerDuration(); //calculates and returns the number of seconds it will take to execute the seq
+        float calculateSequencerTimeUntilFirstData(); //calculates and returns the number of seconds it will take to get the fist data package
         float getDuration() {return duration;}; //returns the previously calculated duration (calculation happens when sequencer is loaded or modified)
+        float getTimeUntilData() {return timeUntilData;}; //returns the previously calculated timeUntilData (calculation happens when sequencer is loaded or modified)
         vector<string> makeCommandsToBoard();
 
         smartImageDimensions_t calculateSmartImageDimensions();
@@ -111,9 +113,13 @@ class smartSequencerHandler
 
         vector<string> parseWords(const string &lineToParse, const char delimiter);
 
+        float timeToDataPR(const pseudoRecipeUB_t &pR, bool &firstDataFound);
+        float seqStepCount(int recInd, bool &firstDataFound, bool haltOnFistData);
+
         bool seqGood;
 
-	float duration;
+        float duration;
+    	float timeUntilData;
 
         tinyxml2::XMLDocument sseqDoc;
 

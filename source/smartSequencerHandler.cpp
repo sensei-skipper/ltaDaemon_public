@@ -20,6 +20,8 @@
 #include "helperFunctions.h"
 
 #define SMART_NO_EXTRA_LEVEL_ID -1
+const float kClkStepDuration = 6.667e-8; // in seconds. The clock runs at 15Mhz    
+
 
 using namespace std;
 
@@ -31,6 +33,7 @@ smartSequencerHandler::smartSequencerHandler(void)
     seqName = "";
     seqGood = false;
     duration = -1;
+    timeUntilData = -1;
 }
 
 smartSequencerHandler::~smartSequencerHandler(void)
@@ -296,7 +299,8 @@ void smartSequencerHandler::loadSequence()
 void smartSequencerHandler::changeSeqVarValue(const string var, const string value) {
     LOG_F(INFO, "changing variable value: %s = %s (previously %s)", var.c_str(), value.c_str(), fVars[var].c_str());
     fVars[var] = value;
-    LOG_F(INFO, "==== new seq duration: %s ===)", printTime(calculateSequencerDuration()).c_str());
+    LOG_F(INFO, "==== new seq duration: %s ===)",    printTime(calculateSequencerDuration()).c_str());
+    LOG_F(INFO, "==== new time until data: %s ===)", printTime(calculateSequencerTimeUntilFirstData()).c_str());
 }
 
 vector<string> smartSequencerHandler::makeCommandsToBoard()
@@ -542,6 +546,9 @@ void smartSequencerHandler::loadNewSequencer(const string seqFileName ){
     //calculate the time it will take to execute the seq
     calculateSequencerDuration();
 
+    //calculate the time until the first data package is sent
+    calculateSequencerTimeUntilFirstData();
+
     //if we make it here without a sequencerException, we are good
     seqGood = true;
 }
@@ -549,7 +556,6 @@ void smartSequencerHandler::loadNewSequencer(const string seqFileName ){
 
 float smartSequencerHandler::calculateSequencerDuration(){
 
-    const float kClkStepDuration = 6.667e-8; // in seconds. The clock runs at 15Mhz    
     stringstream printstream;
     printstream << "\n============================\n";
     printstream << "Calculation of seq duration:\n";
@@ -593,3 +599,61 @@ float smartSequencerHandler::calculatePseudoRecipeDuration(const pseudoRecipeUB_
     }
     return totalTime;
 }
+
+
+float smartSequencerHandler::timeToDataPR(const pseudoRecipeUB_t &pR, bool &firstDataFound){
+    std::vector<state_t> &recipe = fRecipes[pR.recipeName];
+    float rT = 0;
+    for (std::vector<state_t>::iterator it = recipe.begin(); it != recipe.end(); ++it)
+    {
+        rT += resolveFloatVar(it->delay);
+        if (fStates[it->value].find("HD2") != std::string::npos) {
+            firstDataFound = true;
+            break;
+        }
+    }
+    return rT;
+}
+
+
+float smartSequencerHandler::seqStepCount(int recInd, bool &firstDataFound, bool haltOnFistData = true){
+
+    if(firstDataFound==true && haltOnFistData==true) return 0;
+    const pseudoRecipeUB_t &pR=fRecipeUB[recInd];
+    
+    float pT = timeToDataPR(pR, firstDataFound);
+
+    float inRT = 0;
+    if(pR.deeperLevel_id!=SMART_NO_EXTRA_LEVEL_ID){
+        pT += seqStepCount(pR.deeperLevel_id, firstDataFound);    
+    }
+
+    int timesToExecute = ((firstDataFound==true && haltOnFistData==true) ? 1 : resolveIntVar(fRecipeUB[recInd].times_to_execute));
+    pT *= timesToExecute;
+
+    if(pR.selfLevel_id!=SMART_NO_EXTRA_LEVEL_ID){
+        pT += seqStepCount(pR.selfLevel_id, firstDataFound);
+    }
+    
+    return pT;
+}
+
+
+float smartSequencerHandler::calculateSequencerTimeUntilFirstData(){
+
+    bool firstDataFound = false;
+    const float timeToFirstData = seqStepCount(0, firstDataFound) *kClkStepDuration;
+    
+    stringstream printstream;
+    printstream << "\n============================\n";
+    printstream << "Calculation of time until first data:\n";
+    printstream << "\nTime until first data: " << printTime(timeToFirstData) << endl;
+    printstream << "============================\n";
+
+    LOG_F(1, "%s", printstream.str().c_str());
+    
+    timeUntilData = timeToFirstData;
+    return timeUntilData;
+}
+
+
