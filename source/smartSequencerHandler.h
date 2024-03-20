@@ -90,7 +90,8 @@ class smartSequencerHandler
         bool isSequencerVar(const string var){return (fVars.count(var)!=0);};
         void changeSeqVarValue(const string var, const string value);
 
-        void printSequencer();
+        void    printSequencer(bool verbatim);
+        string  getSequencerContent(bool verbatim, bool escape_special_char);
         
         float calculateSequencerDuration(); //calculates and returns the number of seconds it will take to execute the seq
         float calculateSequencerTimeUntilFirstData(); //calculates and returns the number of seconds it will take to get the fist data package

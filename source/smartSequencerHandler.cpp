@@ -372,8 +372,20 @@ vector<string> smartSequencerHandler::makeCommandsToBoard()
     return commToBoard;
 }
 
-void smartSequencerHandler::printSequencer(){
+void smartSequencerHandler::printSequencer(bool verbatim=false){
+    string seqContent = getSequencerContent(verbatim, false);
+    LOG_F(1, "%s", seqContent.c_str());
+}
+
+string smartSequencerHandler::getSequencerContent(bool verbatim=false, bool escape_special_char=true){
     stringstream printstream;
+
+    if(verbatim==true){
+        tinyxml2::XMLPrinter xmlPrint;
+        sseqDoc.Print(&xmlPrint);
+        return ( (escape_special_char)? escapeSpecialCharacters(string(xmlPrint.CStr())) : string(xmlPrint.CStr()) );
+    }
+
     printstream << "VARIABLES: " << endl;
     printstream << "----------" << endl << endl;
     for (map<string,string>::iterator it=fVars.begin(); it!=fVars.end(); ++it) {
@@ -429,7 +441,8 @@ void smartSequencerHandler::printSequencer(){
         printstream << endl << "\t -----------------------------------------------------" << endl;
         printstream << endl;
     }
-    LOG_F(1, "%s", printstream.str().c_str());
+
+    return ( (escape_special_char)? escapeSpecialCharacters(printstream.str()) : printstream.str() );
 }
 
 smartImageDimensions_t smartSequencerHandler::calculateSmartImageDimensions(){

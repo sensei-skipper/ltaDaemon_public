@@ -29,4 +29,7 @@ bool string_to_bool(const std::string value);
 //picks the time units so it's easier to read
 std::string printTime(float seconds);
 
+//replaces all the special characters with their escaped version
+std::string escapeSpecialCharacters(const std::string& input);
+
 #endif

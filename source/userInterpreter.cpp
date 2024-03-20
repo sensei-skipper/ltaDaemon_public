@@ -967,6 +967,15 @@ int UserInterpreter::cmd_start_standard_readout()
         strVars = strVarsStream.str();
 
         vector<imageVar> vars = make_var_list(strVars, (!dynamicReadout && readoutType==LTASOFT_READOUT_TYPE_STANDARD), true);
+        
+        //Add the sequencer as a variable if using smart sequencer
+        if (sseq.getSeqGood()){
+            imageVar seqVar;
+            seqVar.name  = "SEQ";
+            seqVar.value = sseq.getSequencerContent(true, true);
+            vars.push_back(seqVar);
+        }
+
         data_->setInFileNames(&inFileName);
 
         //convert file to fits

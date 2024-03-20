@@ -151,3 +151,28 @@ std::string printTime(float seconds) {
 
     return ss.str();
 }
+
+std::string escapeSpecialCharacters(const std::string& input) {
+    std::string result;
+    for (char c : input) {
+        switch (c) {
+            case '\n':
+                result += "\\n";  // Replace newline with \n
+                break;
+            case '\t':
+                result += "\\t";  // Replace tab with \t
+                break;
+            case '\"':
+                result += "\\\"";  // Replace double quote with \"
+                break;
+            case '\\':
+                result += "\\\\";  // Replace backslash with \\
+                break;
+            // Add cases for other special characters as needed
+            default:
+                result += c;  // Keep other characters as is
+                break;
+        }
+    }
+    return result;
+}

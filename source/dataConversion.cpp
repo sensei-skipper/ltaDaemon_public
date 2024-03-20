@@ -368,11 +368,7 @@ int FitsWriter::write_vars(const vector<imageVar> vars, int hdunum)
             fits_write_key_null(outfptr_, keyName, NULL, &status);
             continue;
         }
-        char comment[FLEN_COMMENT] = "value too long";
-        if(vars[i].comment.size()<FLEN_VALUE) strcpy(comment, vars[i].comment.c_str());
-        char keyValue[FLEN_VALUE] = "value too long";
-        if(vars[i].value.size()<FLEN_VALUE) strcpy(keyValue, vars[i].value.c_str());
-        fits_update_key(outfptr_, TSTRING, keyName, keyValue, comment, &status);
+        fits_update_key_longstr(outfptr_, keyName, vars[i].value.c_str(), vars[i].comment.c_str(), &status);
         LOG_IF_F(WARNING, status!=0, "CFITSIO error: %d", status);
     }
     if (writeTimestamps_) {
