@@ -29,41 +29,73 @@
 // a typical packet has 182 words (this is set in the firmware)
 #define PACKETBUFF_SIZE 250
 
+// data format notes
+// raw data (packer/src/raw_smart_buffer_rw.vhd):
+// zeros_4 & channel_id & header & zeros_36 & s_axis_tdata(17 downto 0);
+// CDS data (packer/src/pix_seq_1ch_rw.vhd):
+// word_out_1 <= zeros_4 & "1100" & zeros_24 & fifo_a_dout; etc
+//
+// the zeros_4 gets replaced by a counter later, so:
+// image data: 4-bit counter, 4-bit ID, 24 zeros, 32-bit CDS sample
+// raw data: 4-bit counter, 4-bit ID, 2-bit header, 36 zeros, 18-bit ADC sample
+
+// this assumes little-endian ordering
+// it also uses bitfields a lot, which might not be totally portable?
+// https://en.cppreference.com/w/cpp/language/bit_field
+union dataword_t {
+    uint64_t word64;
+    struct {
+        union {
+            // for CDS readout, this is a CDS sample (32-bit signed)
+            int32_t cdsSamp;
+            // for raw readout, this is an LTC2387 ADC sample (18-bit signed), and must be sign-extended
+            // see: https://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
+            //      https://stackoverflow.com/a/17719010
+            struct {
+                int32_t adcSamp:ADC_NUM_BITS;
+            };
+        };
+        // these two bytes are always zero
+        uint16_t zero;
+        // for raw readout, the actual header is the 2 highest bits of the byte
+        // for CDS readout, this byte is 0
+        uint8_t :6;
+        uint8_t header:2;
+        // 4-bit counter and 4-bit ID
+        uint8_t chID:4;
+        uint8_t counter:4;
+    };
+};
+
 using namespace std;
 
 #ifdef USEROOT
-    struct dataVars  {
+struct dataVars  {
     //this struct holds variables that can be saved to a ROOT TTree
 
     Short_t cntr;
     Short_t hdr;
     Short_t id;
     Int_t data;
-    };
+};
 #endif
 
 class dataFileReader {
     public:
         dataFileReader(const vector<string> * inFileNames, int gVerbosityTranslate);
         ~dataFileReader();
-        bool getWord(uint64_t &data);
+        bool getWord(dataword_t &data);
         long long getDataCount() {return dataCount_;};
         long long getMissingPackets() {return missingPackets;};
         long long getDataGaps() {return dataGaps;};
         void setupTextDump(const string outFileName);
         void deleteDatFiles();
 
-        static uint8_t decodeCounter(uint64_t word64);
-        static uint8_t decodeID(uint64_t word64);
-        static int32_t decodeDataValueSigned(uint64_t word64);//for standard readout (non-raw)
-        static uint8_t decodeHeader(uint64_t word64);
-        static int32_t decodeADCValueSigned(uint64_t word64, int firstBit);
-
     private:
         void openFile(uint i);
 
         const vector<string> * inFileNames_;
-        deque<uint64_t> dataBuffer_;
+        deque<dataword_t> dataBuffer_;
         FILE *fin;
         long long dataCount_; //number of 64-bit data words read from files
         long long packetCount_; //number of UDP packets read from files
@@ -79,11 +111,11 @@ class dataFileReader {
         long fileLength;
         ofstream myfile;
 
-        #ifdef USEROOT
-            TFile *fout;
-            TTree *dataTree;
-            dataVars dataEntry;
-        #endif
+#ifdef USEROOT
+        TFile *fout;
+        TTree *dataTree;
+        dataVars dataEntry;
+#endif
 };
 
 struct imageVar {

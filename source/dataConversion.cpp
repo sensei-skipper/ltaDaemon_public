@@ -19,31 +19,6 @@
 #include "dataConversion.h"
 #include "helperFunctions.h"
 
-// data format notes
-// raw data (packer/src/raw_smart_buffer_rw.vhd):
-// zeros_4 & channel_id & header & zeros_36 & s_axis_tdata(17 downto 0);
-// CDS data (packer/src/pix_seq_1ch_rw.vhd):
-// word_out_1 <= zeros_4 & "1100" & zeros_24 & fifo_a_dout; etc
-//
-// the zeros_4 gets replaced by a counter later, so:
-// there is always a 4-bit counter and 4-bit ID
-// image data: 24 zeros, 32-bit CDS sample
-// raw data: 2-bit header, 36 zeros, 18-bit ADC sample
-
-#define CNTR_FIRST_BIT_POSITION_IN_64_BIT_WORD 60
-#define CNTR_NBITS 4
-#define ID_FIRST_BIT_POSITION_IN_64_BIT_WORD 56
-#define ID_NBITS 4
-
-#define DATA_NBITS 32
-
-#define HDR_FIRST_BIT_POSITION_IN_64_BIT_WORD 54
-#define HDR_NBITS 2
-
-#define FIRST_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 0 
-#define SECOND_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 18
-#define THIRD_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 36 
-
 #define STARTUP_PACKETS 20
 
 #define INTEGER_FITS true
@@ -52,7 +27,7 @@
 //write a compressed FITS file directly, instead of converting to compressed FITS in a second pass (this is slow, do not use)
 #define COMPRESSED_FITS false
 
-//number of pixels to accumulate in an HDU buffer before writing to FITS
+//number of pixels to accumulate in HDU buffers before writing to FITS
 #define FITS_CHUNKSIZE 100000
 
 using namespace std;
@@ -83,10 +58,10 @@ dataFileReader::dataFileReader(const vector<string> * inFileNames, int gVerbosit
 dataFileReader::~dataFileReader() {
     if (textFileFlag) {
         myfile.close();
-	#ifdef USEROOT
-            dataTree->Write();
-            fout->Close();
-	#endif
+#ifdef USEROOT
+        dataTree->Write();
+        fout->Close();
+#endif
     }
 }
 
@@ -99,17 +74,17 @@ void dataFileReader::setupTextDump(const string outFileName) {
     myfile.open(outFileNameCsv.str().c_str());
     //create root file
 
-    #ifdef USEROOT
-        stringstream outFileNameRoot;
-        outFileNameRoot << outFileName.c_str() << ".root";
-        fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
-        dataTree = new TTree("data", "data");
-        //add Branches to tree
-        dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
-        dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
-        dataTree->Branch("id", &(dataEntry.id), "id/S");
-        dataTree->Branch("data", &(dataEntry.data), "data/I");
-    #endif
+#ifdef USEROOT
+    stringstream outFileNameRoot;
+    outFileNameRoot << outFileName.c_str() << ".root";
+    fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
+    dataTree = new TTree("data", "data");
+    //add Branches to tree
+    dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
+    dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
+    dataTree->Branch("id", &(dataEntry.id), "id/S");
+    dataTree->Branch("data", &(dataEntry.data), "data/I");
+#endif
 }
 
 void dataFileReader::openFile(uint i) {
@@ -117,16 +92,16 @@ void dataFileReader::openFile(uint i) {
     fin = fopen(inFileNames_->at(i).c_str(), "r");
 }
 
-bool dataFileReader::getWord(uint64_t &word64) {
+bool dataFileReader::getWord(dataword_t &word64) {
     while (dataBuffer_.empty()) {
         //if we're here, we need to read more data for the buffer
 
         //declare auxiliary variables
         uint8_t header[3];
-	uint64_t packetBuff[PACKETBUFF_SIZE];
+        dataword_t packetBuff[PACKETBUFF_SIZE];
 
         while ( sizeof(header) != fread(header, 1, sizeof(header), fin) ) {//for all the data in the binary file, take the first 3 bytes of the data for each udp package
-            //if we're here, we failed to get a header out of the current file, and we need to open the next file
+                                                                           //if we're here, we failed to get a header out of the current file, and we need to open the next file
             fclose(fin);
             iFile++;
             if (iFile == inFileNames_->size()) {
@@ -146,7 +121,7 @@ bool dataFileReader::getWord(uint64_t &word64) {
         //check if we lost a udp packet
         if (((packCurrentIndex - packPreviousIndex + 256)%256) != 1 && dataCount_ != 0) {
             int logLevel = -1;//WARNING by default
-            //skipping numbers is normal in the first few packets, since the daemon is still trying to get the "Done" response to the sequencer start command
+                              //skipping numbers is normal in the first few packets, since the daemon is still trying to get the "Done" response to the sequencer start command
             if (packetCount_ < STARTUP_PACKETS) {
                 logLevel = 1;
             } else {
@@ -164,11 +139,11 @@ bool dataFileReader::getWord(uint64_t &word64) {
         fread(&packetBuff, sizeof(uint64_t), nData, fin);
         //for, data in udp package
         for (uint8_t i = 0; i < nData; i++) {//for each 64-bit word in the udp package
-            //64-bit word from packer
-	    word64 = packetBuff[i];
+                                             //64-bit word from packer
+            word64 = packetBuff[i];
 
             //extract information from the 64-bit word
-            uint8_t counterValue = dataFileReader::decodeCounter(word64);
+            uint8_t counterValue = word64.counter;
 
             //Check data consistency
             int dataIndexNew = counterValue;
@@ -178,8 +153,8 @@ bool dataFileReader::getWord(uint64_t &word64) {
             }
 
             if (gVerbosityTranslate_ || textFileFlag) {
-                uint8_t idValue = decodeID(word64);
-                int64_t dataValueSigned = decodeDataValueSigned(word64);
+                uint8_t idValue = word64.chID;
+                int32_t dataValueSigned = word64.cdsSamp;
                 if (gVerbosityTranslate_)
                 {
                     LOG_F(INFO, "%d %d %lld %d %llu", counterValue, idValue, dataValueSigned, counterValue, word64);
@@ -190,14 +165,14 @@ bool dataFileReader::getWord(uint64_t &word64) {
                     myfile << counterValue << "," << idValue << "," <<  dataValueSigned << "," << counterValue << "," << idValue << "," << dataValueSigned << "\n";
 
                     //fill root file
-		    #ifdef USEROOT
-                        dataEntry.cntr = counterValue;
-                        dataEntry.hdr = 0;
-                        dataEntry.id = idValue;
-                        dataEntry.data = dataValueSigned;
-                        dataTree->Fill();
-		    #endif 
-		
+#ifdef USEROOT
+                    dataEntry.cntr = counterValue;
+                    dataEntry.hdr = 0;
+                    dataEntry.id = idValue;
+                    dataEntry.data = dataValueSigned;
+                    dataTree->Fill();
+#endif 
+
                 }
             }
 
@@ -220,41 +195,6 @@ void dataFileReader::deleteDatFiles() {
     for (uint iFile =0; iFile<inFileNames_->size(); iFile++) {
         deleteFile(inFileNames_->at(iFile).c_str());
     }
-}
-
-uint8_t dataFileReader::decodeCounter(uint64_t word64) {
-    uint8_t counterValue = word64 >> CNTR_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    counterValue &= (1 << CNTR_NBITS)-1;
-    return counterValue;
-}
-
-uint8_t dataFileReader::decodeID(uint64_t word64) {
-    uint8_t idValue = word64 >> ID_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    idValue &= (1 << ID_NBITS)-1;
-    return idValue;
-}
-
-int32_t dataFileReader::decodeDataValueSigned(uint64_t word64) {
-    int64_t dataValueSigned = word64 & ((1L << DATA_NBITS) - 1);
-    if (dataValueSigned > (1L << (DATA_NBITS-1))) {//if larger than positive limit, it's negative (two's complement)
-        dataValueSigned -= (1L << DATA_NBITS);
-    }
-    return dataValueSigned;
-}
-
-uint8_t dataFileReader::decodeHeader(uint64_t word64) {
-    uint8_t hdrValue = word64 >> HDR_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    hdrValue &= (1 << HDR_NBITS)-1;
-    return hdrValue;
-}
-
-int32_t dataFileReader::decodeADCValueSigned(uint64_t word64, int firstBit) {
-    int64_t dataValueSigned = word64 & ((1L << (ADC_NUM_BITS+firstBit)) - 1);
-    dataValueSigned >>= firstBit;
-    if (dataValueSigned > (1L << (ADC_NUM_BITS-1))) {//if larger than positive limit, it's negative (two's complement)
-        dataValueSigned -= (1L << ADC_NUM_BITS);
-    }
-    return dataValueSigned;
 }
 
 int mean(const vector <double> data, double &result)
@@ -557,10 +497,10 @@ int DataConversion::bin_to_fits_interleaving(const string outFileName, const uin
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         //SAVE PIXEL INFORMATION HERE
         if (idValue>=channelIndex.size()) {
@@ -676,15 +616,15 @@ int DataConversion::bin_to_fits(const string outFileName, const string tempFileN
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     // number of words buffered in pixelsVectorMap
     int bufferedWords = 0;
     bool moreData;
     do {
         moreData = reader.getWord(word64);
         if (moreData) {
-            uint8_t idValue = dataFileReader::decodeID(word64);
-            int32_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+            uint8_t idValue = word64.chID;
+            int32_t dataValueSigned = word64.cdsSamp;
 
             //SAVE PIXEL INFORMATION HERE
             pixelsVectorMap[idValue].push_back(-1 * dataValueSigned);
@@ -905,10 +845,10 @@ int DataConversion::bin_to_fits_smart(const string outFileName, const smartImage
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         dataCounter = dataCounter + 1;
 
@@ -994,19 +934,19 @@ int DataConversion::bin_to_raw(const string outFileName) {
     dataFileReader reader(inFileNames_, gVerbosityTranslate);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint idValue = dataFileReader::decodeID(word64);
-        uint counterValue = dataFileReader::decodeCounter(word64);
+        uint32_t idValue = word64.chID;
+        uint32_t counterValue = word64.counter;
         //int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
 
         //extract information from the 64-bit word
         //data header
-        uint64_t hdrValue = dataFileReader::decodeHeader(word64);
+        uint32_t hdrValue = word64.header;
 
         //data value
         //sample 1
-        int32_t adc1ValueSigned = (int32_t) dataFileReader::decodeADCValueSigned(word64, FIRST_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD);
+        int32_t adc1ValueSigned = word64.adcSamp;
 
         ////sample 2
         //int32_t adc2ValueSigned = (int32_t) dataFileReader::decodeADCValueSigned(word64, SECOND_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD);
@@ -1022,7 +962,7 @@ int DataConversion::bin_to_raw(const string outFileName) {
 
             if (gVerbosityTranslate)
             {
-                LOG_F(INFO, "%d %d %llu %d %llu", counterValue, idValue, hdrValue, dataSigned[adcDataInd], word64);
+                LOG_F(INFO, "%d %d %llu %d %llu", counterValue, idValue, hdrValue, dataSigned[adcDataInd], word64.word64);
             }
             //file csv file
             myfile << counterValue << ", " << idValue << ", " << hdrValue << ", "<< dataSigned[adcDataInd] << "\n";
@@ -1069,10 +1009,10 @@ int DataConversion::bin_to_calibrate(const string outFileName, const unsigned in
     dataFileReader reader(inFileNames_, gVerbosityTranslate);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         //SAVE PIXEL INFORMATION HERE
         if (idValue>=channelIndex.size()) {
