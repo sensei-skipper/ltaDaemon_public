@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "fitsio.h"
+#include "fitsio2.h"
 
 #include "loguru.hpp" //logging
 
@@ -274,7 +275,7 @@ int FitsWriter::create_img(const vector<imageVar> vars, bool writeTimestamps)
     naxes[0] = nCols_;
     naxes[1] = nRows_;
 
-    //long totpix = naxes[0] * naxes[1];
+    long totpix = naxes[0] * naxes[1];
     for (int hduInd = 0; hduInd< nHdu_; hduInd++) {
         //LONG_IMG: signed 32-bit integer
         //FLOAT_IMG: signed 32-bit float
@@ -288,6 +289,29 @@ int FitsWriter::create_img(const vector<imageVar> vars, bool writeTimestamps)
             fits_write_key_null(outfptr_, extraVars_[i].c_str(), NULL, &status);
         }
     }
+
+    // CFITSIO does not allocate the file immediately, it buffers stuff in memory and writes to file as needed
+    // so the first time we write a bunch of pixels to the later HDUs, CFITSIO will suddenly need to allocate a lot of disk
+    // we would prefer to get the allocation done at initialization, and avoid latency during data processing
+    // to make this happen, we write a block of zeroes to the end of the last HDU
+    // MINDIRECT is the minimum number of bytes to force CFITSIO to write to disk instead of buffering
+    // this forces CFITSIO to immediately allocate (write zeroes to) the full extent of the image
+    int nzeros = MINDIRECT / isInteger_?sizeof(int):sizeof(float);
+    if (nzeros >= totpix) {
+        long fpixel[2];
+        fpixel[0] = ((totpix - nzeros) % nCols_) + 1;
+        fpixel[1] = ((totpix - nzeros) / nCols_) + 1;
+        int hduType = IMAGE_HDU;
+        fits_movabs_hdu(outfptr_, isCompressed_?nHdu_+1:nHdu_, &hduType, &status);
+        if (isInteger_) {
+            int zeros[nzeros]; // initialized to zero
+            fits_write_pix(outfptr_, TINT, fpixel, nzeros, &(zeros[0]), &status);
+        } else {
+            float zeros[nzeros]; // initialized to zero
+            fits_write_pix(outfptr_, TFLOAT, fpixel, nzeros, &(zeros[0]), &status);
+        }
+    }
+
     return status;
 }
 
@@ -375,7 +399,7 @@ template <typename T> int FitsWriter::dump_to_fits(int hdunum, vector<T> &pixels
     }
     int pixRow = (pixelCounts[hdunum] / nCols_) + 1;
     int pixCol = (pixelCounts[hdunum] % nCols_) + 1;
-    long fpixel[2] = {pixCol,pixRow};
+    long fpixel[2] = {pixCol, pixRow};
     //LOG_F(1,"hdunum %d: writing %d pixels starting at (%d, %d)", hdunum, pixels.size(), fpixel[0], fpixel[1]);
 
     long spaceRemaining = pixExpected - pixelCounts[hdunum];
