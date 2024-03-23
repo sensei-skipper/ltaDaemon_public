@@ -296,8 +296,11 @@ int FitsWriter::create_img(const vector<imageVar> vars, bool writeTimestamps)
     // to make this happen, we write a block of zeroes to the end of the last HDU
     // MINDIRECT is the minimum number of bytes to force CFITSIO to write to disk instead of buffering
     // this forces CFITSIO to immediately allocate (write zeroes to) the full extent of the image
-    int nzeros = MINDIRECT / isInteger_?sizeof(int):sizeof(float);
-    if (nzeros >= totpix) {
+    //
+    // there might be more efficient ways to do this allocation using low-level file ops (e.g. ftruncate/fallocate)
+    // but we'd probably need to monkey with CFITSIO itself to make those work
+    int nzeros = MINDIRECT / (isInteger_?sizeof(int):sizeof(float));
+    if (nzeros <= totpix) {
         long fpixel[2];
         fpixel[0] = ((totpix - nzeros) % nCols_) + 1;
         fpixel[1] = ((totpix - nzeros) / nCols_) + 1;
