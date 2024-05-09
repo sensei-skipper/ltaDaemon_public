@@ -18,12 +18,12 @@ do
     #skip empty (or commented) lines
     if [ -n "${tokens[3]}" ]
     then
-        sleep 1
+        sleep 0.2
         echo "starting ${tokens[0]}"
         screen -S conf -X screen "${tokens[0]}" bash -lc "./configure.exe -b ${tokens[3]} -t ${tokens[2]}"
     fi
 done < ltaConfigFile.txt
 
 echo "daemons running, waiting for LTA boot" 
-sleep 30
+sleep 20
 echo "ready for LTA init and dummy image"
