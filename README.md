@@ -187,3 +187,18 @@ Run a readout (each simulator reads the file `test_data.txt` and sends it to its
 ```
 ./test_run.sh
 ```
+
+## Acknowledgments
+
+Skipper CCDs, the LTA, and the LTA Daemon are the product of years of effort by dozens of people. In order to give credit for that work, we ask you to please include the appropriate citations and/or acknowledgments in your publications.
+
+* _Low Threshold Acquisition (LTA) Controller_: If you are using the LTA to collect data that is used in a publication, please reference [Cancelo et al., JATIS, 7(1), 015001, (2021)](https://doi.org/10.1117/1.JATIS.7.1.015001).
+
+* _Skipper CCD_: If you are using a Skipper CCD of LBNL heritage, please reference [Tiffenberg et al., PRL 119, 131802 (2017)](https://doi.org/10.1103/PhysRevLett.119.131802) and add the following acknowledgment:
+> The fully depleted Skipper-CCD was developed at Lawrence Berkeley National Laboratory, as were the designs described in this work. The CCD development work was supported in part by the Director, Office of Science, of the U.S. Department of Energy under No. DE-AC02-05CH11231.
+
+* _Oscura CCD_: If you are using a Skipper CCD designed for Oscura, or an Oscura voltage or sequencer file, please include the Skipper CCD acknowledgment shown above and reference [Cervantes-Vergara et al., (2023)](https://doi.org/10.1088/1748-0221/18/08/P08016).
+
+* _MAS Skipper CCD_: If you are using a Multi-Amplifier Sensing (MAS) Skipper CCD developed as part of the , please reference [Holland et al. (2023)](https://doi.org/10.1002/asna.20230072) and [Botti et al. 2023](https://doi.org/10.1109/TED.2024.3392711). Please add the following acknowledgment:
+> The multiamplifier sensing (MAS) CCD was developed as a collaborative endeavor between Lawrence Berkeley National Laboratory and Fermi National Accelerator Laboratory. Funding for the design and fabrication of the MAS device described in this work came from a combination of sources including the DOE Quantum Information Science (QIS) initiative, the DOE Early Career Research Program, and the Laboratory Directed Research and Development Program at Fermi National Accelerator Laboratory under Contract No. DE-AC02-07CH11359.
+
