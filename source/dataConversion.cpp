@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include "fitsio.h"
+#include "fitsio2.h"
 
 #include "loguru.hpp" //logging
 
@@ -19,21 +20,6 @@
 #include "dataConversion.h"
 #include "helperFunctions.h"
 
-
-#define CNTR_FIRST_BIT_POSITION_IN_64_BIT_WORD 60
-#define CNTR_NBITS 4
-#define ID_FIRST_BIT_POSITION_IN_64_BIT_WORD 56
-#define ID_NBITS 4
-
-#define DATA_NBITS 32
-
-#define HDR_FIRST_BIT_POSITION_IN_64_BIT_WORD 54
-#define HDR_NBITS 2
-
-#define FIRST_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 0 
-#define SECOND_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 18
-#define THIRD_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD 36 
-
 #define STARTUP_PACKETS 20
 
 #define INTEGER_FITS true
@@ -42,7 +28,7 @@
 //write a compressed FITS file directly, instead of converting to compressed FITS in a second pass (this is slow, do not use)
 #define COMPRESSED_FITS false
 
-//number of pixels to accumulate in an HDU buffer before writing to FITS
+//number of pixels to accumulate in HDU buffers before writing to FITS
 #define FITS_CHUNKSIZE 100000
 
 using namespace std;
@@ -73,10 +59,10 @@ dataFileReader::dataFileReader(const vector<string> * inFileNames, int gVerbosit
 dataFileReader::~dataFileReader() {
     if (textFileFlag) {
         myfile.close();
-	#ifdef USEROOT
-            dataTree->Write();
-            fout->Close();
-	#endif
+#ifdef USEROOT
+        dataTree->Write();
+        fout->Close();
+#endif
     }
 }
 
@@ -89,17 +75,17 @@ void dataFileReader::setupTextDump(const string outFileName) {
     myfile.open(outFileNameCsv.str().c_str());
     //create root file
 
-    #ifdef USEROOT
-        stringstream outFileNameRoot;
-        outFileNameRoot << outFileName.c_str() << ".root";
-        fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
-        dataTree = new TTree("data", "data");
-        //add Branches to tree
-        dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
-        dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
-        dataTree->Branch("id", &(dataEntry.id), "id/S");
-        dataTree->Branch("data", &(dataEntry.data), "data/I");
-    #endif
+#ifdef USEROOT
+    stringstream outFileNameRoot;
+    outFileNameRoot << outFileName.c_str() << ".root";
+    fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
+    dataTree = new TTree("data", "data");
+    //add Branches to tree
+    dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
+    dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
+    dataTree->Branch("id", &(dataEntry.id), "id/S");
+    dataTree->Branch("data", &(dataEntry.data), "data/I");
+#endif
 }
 
 void dataFileReader::openFile(uint i) {
@@ -107,16 +93,16 @@ void dataFileReader::openFile(uint i) {
     fin = fopen(inFileNames_->at(i).c_str(), "r");
 }
 
-bool dataFileReader::getWord(uint64_t &word64) {
+bool dataFileReader::getWord(dataword_t &word64) {
     while (dataBuffer_.empty()) {
         //if we're here, we need to read more data for the buffer
 
         //declare auxiliary variables
         uint8_t header[3];
-	uint64_t packetBuff[PACKETBUFF_SIZE];
+        dataword_t packetBuff[PACKETBUFF_SIZE];
 
         while ( sizeof(header) != fread(header, 1, sizeof(header), fin) ) {//for all the data in the binary file, take the first 3 bytes of the data for each udp package
-            //if we're here, we failed to get a header out of the current file, and we need to open the next file
+                                                                           //if we're here, we failed to get a header out of the current file, and we need to open the next file
             fclose(fin);
             iFile++;
             if (iFile == inFileNames_->size()) {
@@ -136,7 +122,7 @@ bool dataFileReader::getWord(uint64_t &word64) {
         //check if we lost a udp packet
         if (((packCurrentIndex - packPreviousIndex + 256)%256) != 1 && dataCount_ != 0) {
             int logLevel = -1;//WARNING by default
-            //skipping numbers is normal in the first few packets, since the daemon is still trying to get the "Done" response to the sequencer start command
+                              //skipping numbers is normal in the first few packets, since the daemon is still trying to get the "Done" response to the sequencer start command
             if (packetCount_ < STARTUP_PACKETS) {
                 logLevel = 1;
             } else {
@@ -154,11 +140,11 @@ bool dataFileReader::getWord(uint64_t &word64) {
         fread(&packetBuff, sizeof(uint64_t), nData, fin);
         //for, data in udp package
         for (uint8_t i = 0; i < nData; i++) {//for each 64-bit word in the udp package
-            //64-bit word from packer
-	    word64 = packetBuff[i];
+                                             //64-bit word from packer
+            word64 = packetBuff[i];
 
             //extract information from the 64-bit word
-            uint8_t counterValue = dataFileReader::decodeCounter(word64);
+            uint8_t counterValue = word64.counter;
 
             //Check data consistency
             int dataIndexNew = counterValue;
@@ -168,8 +154,8 @@ bool dataFileReader::getWord(uint64_t &word64) {
             }
 
             if (gVerbosityTranslate_ || textFileFlag) {
-                uint8_t idValue = decodeID(word64);
-                int64_t dataValueSigned = decodeDataValueSigned(word64);
+                uint8_t idValue = word64.chID;
+                int32_t dataValueSigned = word64.cdsSamp;
                 if (gVerbosityTranslate_)
                 {
                     LOG_F(INFO, "%d %d %lld %d %llu", counterValue, idValue, dataValueSigned, counterValue, word64);
@@ -180,14 +166,14 @@ bool dataFileReader::getWord(uint64_t &word64) {
                     myfile << counterValue << "," << idValue << "," <<  dataValueSigned << "," << counterValue << "," << idValue << "," << dataValueSigned << "\n";
 
                     //fill root file
-		    #ifdef USEROOT
-                        dataEntry.cntr = counterValue;
-                        dataEntry.hdr = 0;
-                        dataEntry.id = idValue;
-                        dataEntry.data = dataValueSigned;
-                        dataTree->Fill();
-		    #endif 
-		
+#ifdef USEROOT
+                    dataEntry.cntr = counterValue;
+                    dataEntry.hdr = 0;
+                    dataEntry.id = idValue;
+                    dataEntry.data = dataValueSigned;
+                    dataTree->Fill();
+#endif 
+
                 }
             }
 
@@ -210,41 +196,6 @@ void dataFileReader::deleteDatFiles() {
     for (uint iFile =0; iFile<inFileNames_->size(); iFile++) {
         deleteFile(inFileNames_->at(iFile).c_str());
     }
-}
-
-uint8_t dataFileReader::decodeCounter(uint64_t word64) {
-    uint8_t counterValue = word64 >> CNTR_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    counterValue &= (1 << CNTR_NBITS)-1;
-    return counterValue;
-}
-
-uint8_t dataFileReader::decodeID(uint64_t word64) {
-    uint8_t idValue = word64 >> ID_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    idValue &= (1 << ID_NBITS)-1;
-    return idValue;
-}
-
-int32_t dataFileReader::decodeDataValueSigned(uint64_t word64) {
-    int64_t dataValueSigned = word64 & ((1L << DATA_NBITS) - 1);
-    if (dataValueSigned > (1L << (DATA_NBITS-1))) {//if larger than positive limit, it's negative (two's complement)
-        dataValueSigned -= (1L << DATA_NBITS);
-    }
-    return dataValueSigned;
-}
-
-uint8_t dataFileReader::decodeHeader(uint64_t word64) {
-    uint8_t hdrValue = word64 >> HDR_FIRST_BIT_POSITION_IN_64_BIT_WORD;
-    hdrValue &= (1 << HDR_NBITS)-1;
-    return hdrValue;
-}
-
-int32_t dataFileReader::decodeADCValueSigned(uint64_t word64, int firstBit) {
-    int64_t dataValueSigned = word64 & ((1L << (ADC_NUM_BITS+firstBit)) - 1);
-    dataValueSigned >>= firstBit;
-    if (dataValueSigned > (1L << (ADC_NUM_BITS-1))) {//if larger than positive limit, it's negative (two's complement)
-        dataValueSigned -= (1L << ADC_NUM_BITS);
-    }
-    return dataValueSigned;
 }
 
 int mean(const vector <double> data, double &result)
@@ -324,7 +275,7 @@ int FitsWriter::create_img(const vector<imageVar> vars, bool writeTimestamps)
     naxes[0] = nCols_;
     naxes[1] = nRows_;
 
-    //long totpix = naxes[0] * naxes[1];
+    long totpix = naxes[0] * naxes[1];
     for (int hduInd = 0; hduInd< nHdu_; hduInd++) {
         //LONG_IMG: signed 32-bit integer
         //FLOAT_IMG: signed 32-bit float
@@ -338,6 +289,32 @@ int FitsWriter::create_img(const vector<imageVar> vars, bool writeTimestamps)
             fits_write_key_null(outfptr_, extraVars_[i].c_str(), NULL, &status);
         }
     }
+
+    // CFITSIO does not allocate the file immediately, it buffers stuff in memory and writes to file as needed
+    // so the first time we write a bunch of pixels to the later HDUs, CFITSIO will suddenly need to allocate a lot of disk
+    // we would prefer to get the allocation done at initialization, and avoid latency during data processing
+    // to make this happen, we write a block of zeroes to the end of the last HDU
+    // MINDIRECT is the minimum number of bytes to force CFITSIO to write to disk instead of buffering
+    // this forces CFITSIO to immediately allocate (write zeroes to) the full extent of the image
+    //
+    // there might be more efficient ways to do this allocation using low-level file ops (e.g. ftruncate/fallocate)
+    // but we'd probably need to monkey with CFITSIO itself to make those work
+    int nzeros = MINDIRECT / (isInteger_?sizeof(int):sizeof(float));
+    if (nzeros <= totpix) {
+        long fpixel[2];
+        fpixel[0] = ((totpix - nzeros) % nCols_) + 1;
+        fpixel[1] = ((totpix - nzeros) / nCols_) + 1;
+        int hduType = IMAGE_HDU;
+        fits_movabs_hdu(outfptr_, isCompressed_?nHdu_+1:nHdu_, &hduType, &status);
+        if (isInteger_) {
+            int zeros[nzeros]; // initialized to zero
+            fits_write_pix(outfptr_, TINT, fpixel, nzeros, &(zeros[0]), &status);
+        } else {
+            float zeros[nzeros]; // initialized to zero
+            fits_write_pix(outfptr_, TFLOAT, fpixel, nzeros, &(zeros[0]), &status);
+        }
+    }
+
     return status;
 }
 
@@ -421,7 +398,7 @@ template <typename T> int FitsWriter::dump_to_fits(int hdunum, vector<T> &pixels
     }
     int pixRow = (pixelCounts[hdunum] / nCols_) + 1;
     int pixCol = (pixelCounts[hdunum] % nCols_) + 1;
-    long fpixel[2] = {pixCol,pixRow};
+    long fpixel[2] = {pixCol, pixRow};
     //LOG_F(1,"hdunum %d: writing %d pixels starting at (%d, %d)", hdunum, pixels.size(), fpixel[0], fpixel[1]);
 
     long spaceRemaining = pixExpected - pixelCounts[hdunum];
@@ -543,10 +520,10 @@ int DataConversion::bin_to_fits_interleaving(const string outFileName, const uin
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         //SAVE PIXEL INFORMATION HERE
         if (idValue>=channelIndex.size()) {
@@ -662,32 +639,40 @@ int DataConversion::bin_to_fits(const string outFileName, const string tempFileN
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
-    while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int32_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+    dataword_t word64;
+    // number of words buffered in pixelsVectorMap
+    int bufferedWords = 0;
+    bool moreData;
+    do {
+        moreData = reader.getWord(word64);
+        if (moreData) {
+            uint8_t idValue = word64.chID;
+            int32_t dataValueSigned = word64.cdsSamp;
 
-        //SAVE PIXEL INFORMATION HERE
-        pixelsVectorMap[idValue].push_back(-1 * dataValueSigned);
-
-        if (pixelsVectorMap.size()==LTA_NUMBER_OF_CHANNELS) {//we've seen all channels, so it's safe to assign the channels to HDUs
-            int hdunum = 1;
-            for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-                //C++ maps are sorted, so the HDUs are automatically written in channel order
-                if (chPixIt->second.size() >= chunkSize) {
-                    outf.dump_to_fits(hdunum, chPixIt->second, true, chunkSize);
-                }
-                hdunum++;
-            }
-        } else if (pixelsVectorMap.size()>LTA_NUMBER_OF_CHANNELS) {
-            LOG_F(ERROR, "too many channels! %ld channels where %d were expected:", pixelsVectorMap.size(), LTA_NUMBER_OF_CHANNELS);
-            for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-                LOG_F(ERROR, "chID %d", chPixIt->first);
-            }
-            LOG_F(ERROR, "stop processing this image");
-            return 1;
+            //SAVE PIXEL INFORMATION HERE
+            pixelsVectorMap[idValue].push_back(-1 * dataValueSigned);
+            bufferedWords++;
         }
-    } //while
+
+        if (!moreData || bufferedWords >= chunkSize) {
+            if (pixelsVectorMap.size()==LTA_NUMBER_OF_CHANNELS) {//we've seen all channels, so it's safe to assign the channels to HDUs
+                int hdunum = 1;
+                for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
+                    //C++ maps are sorted, so the HDUs are automatically written in channel order
+                    outf.dump_to_fits(hdunum, chPixIt->second, true, -1);
+                    hdunum++;
+                }
+                bufferedWords = 0;
+            } else if (pixelsVectorMap.size()>LTA_NUMBER_OF_CHANNELS) {
+                LOG_F(ERROR, "too many channels! %ld channels where %d were expected:", pixelsVectorMap.size(), LTA_NUMBER_OF_CHANNELS);
+                for ( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
+                    LOG_F(ERROR, "chID %d", chPixIt->first);
+                }
+                LOG_F(ERROR, "stop processing this image");
+                return 1;
+            }
+        }
+    } while (moreData);
 
     //aca cerrar loop de varios archivos
 
@@ -696,16 +681,11 @@ int DataConversion::bin_to_fits(const string outFileName, const string tempFileN
     bool noData = true; //true if all HDUs are totally empty
     if (reader.getMissingPackets() != 0) dataGood = false;
     if (reader.getDataGaps() != 0) dataGood = false;
+    if (pixelsVectorMap.size() != LTA_NUMBER_OF_CHANNELS) dataGood = false;
     for( auto chPixIt = pixelsVectorMap.begin(); chPixIt != pixelsVectorMap.end(); ++chPixIt ){
-        //C++ maps are sorted, so the HDUs are automatically written in channel order
-        auto chID = chPixIt->first;
-
-        outf.dump_to_fits(hdunum, chPixIt->second);
-        dataGood &= outf.save_counts(hdunum, chID, runNum);
-
+        dataGood &= outf.save_counts(hdunum, chPixIt->first, runNum);
         hdunum++;
     }
-    if (hdunum != 1 + LTA_NUMBER_OF_CHANNELS) dataGood = false;
 
     outf.close(); //close output FITS file
     LOG_IF_F(INFO, dataGood, "data good: no missing data and all HDUs got the correct number of pixels");
@@ -804,7 +784,7 @@ template <typename T> int DataConversion::compute_pixel_value_smart(FitsWriter &
                 colInd[hduInd]+=pixelsAvailable;
                 usedPixInd+=pixelsAvailable;
             } else {//fill the row buffer and write to FITS
-                //fill the temporary vector of the Row of the image with all the samples
+                    //fill the temporary vector of the Row of the image with all the samples
                 for (int i=0; i<pixelsNeededInRow; i++){
                     fRowImageAll[hduInd][colInd[hduInd]+i] = pixelsVector[hduInd][usedPixInd+i];
                 }
@@ -888,10 +868,10 @@ int DataConversion::bin_to_fits_smart(const string outFileName, const smartImage
     if (textFileFlag) reader.setupTextDump(outFileName);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         dataCounter = dataCounter + 1;
 
@@ -948,12 +928,12 @@ int DataConversion::bin_to_raw(const string outFileName) {
     //output files
     ofstream myfile;
 
-    #ifdef USEROOT
-        TFile *fout;
-        TTree *dataTree;
-        dataVars dataEntry;
-    #endif
-	
+#ifdef USEROOT
+    TFile *fout;
+    TTree *dataTree;
+    dataVars dataEntry;
+#endif
+
     //create text file
     stringstream outFileNameCsv;
     outFileNameCsv << outFileName.c_str() << ".csv";
@@ -962,34 +942,34 @@ int DataConversion::bin_to_raw(const string outFileName) {
     stringstream outFileNameRoot;
     outFileNameRoot << outFileName.c_str() << ".root";
 
-    #ifdef USEROOT
-      fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
-      lastFilename_ = outFileNameRoot.str();
+#ifdef USEROOT
+    fout = new TFile(outFileNameRoot.str().c_str(), "recreate");
+    lastFilename_ = outFileNameRoot.str();
 
-      dataTree = new TTree("data", "data");
-      //add Branches to tree
-      dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
-      dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
-      dataTree->Branch("id", &(dataEntry.id), "id/S");
-      dataTree->Branch("data", &(dataEntry.data), "data/I");
-    #endif
+    dataTree = new TTree("data", "data");
+    //add Branches to tree
+    dataTree->Branch("cntr", &(dataEntry.cntr), "cntr/S");
+    dataTree->Branch("hdr", &(dataEntry.hdr), "hdr/S");
+    dataTree->Branch("id", &(dataEntry.id), "id/S");
+    dataTree->Branch("data", &(dataEntry.data), "data/I");
+#endif
 
     dataFileReader reader(inFileNames_, gVerbosityTranslate);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint idValue = dataFileReader::decodeID(word64);
-        uint counterValue = dataFileReader::decodeCounter(word64);
+        uint32_t idValue = word64.chID;
+        uint32_t counterValue = word64.counter;
         //int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
 
         //extract information from the 64-bit word
         //data header
-        uint64_t hdrValue = dataFileReader::decodeHeader(word64);
+        uint32_t hdrValue = word64.header;
 
         //data value
         //sample 1
-        int32_t adc1ValueSigned = (int32_t) dataFileReader::decodeADCValueSigned(word64, FIRST_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD);
+        int32_t adc1ValueSigned = word64.adcSamp;
 
         ////sample 2
         //int32_t adc2ValueSigned = (int32_t) dataFileReader::decodeADCValueSigned(word64, SECOND_ADC_SAMPLE_FIRST_BIT_POS_IN_64_BIT_WORD);
@@ -1005,29 +985,29 @@ int DataConversion::bin_to_raw(const string outFileName) {
 
             if (gVerbosityTranslate)
             {
-                LOG_F(INFO, "%d %d %llu %d %llu", counterValue, idValue, hdrValue, dataSigned[adcDataInd], word64);
+                LOG_F(INFO, "%d %d %llu %d %llu", counterValue, idValue, hdrValue, dataSigned[adcDataInd], word64.word64);
             }
             //file csv file
             myfile << counterValue << ", " << idValue << ", " << hdrValue << ", "<< dataSigned[adcDataInd] << "\n";
 
             //fill root file
-	    #ifdef USEROOT
-                dataEntry.cntr = counterValue;
-                dataEntry.hdr = hdrValue;
-                dataEntry.id = idValue;
-                dataEntry.data = dataSigned[adcDataInd];
-                dataTree->Fill();
-	    #endif
+#ifdef USEROOT
+            dataEntry.cntr = counterValue;
+            dataEntry.hdr = hdrValue;
+            dataEntry.id = idValue;
+            dataEntry.data = dataSigned[adcDataInd];
+            dataTree->Fill();
+#endif
         }//end for 3 samples in one 64-bit word
 
     } //while
 
     //aca cerrar loop de varios archivos
     myfile.close();
-    #ifdef USEROOT
-        dataTree->Write();
-       fout->Close();
-    #endif
+#ifdef USEROOT
+    dataTree->Write();
+    fout->Close();
+#endif
 
     if (reader.getDataCount()==SMART_BUFFER_SIZE) {
         LOG_F(INFO, "data good: correct number of samples");
@@ -1052,10 +1032,10 @@ int DataConversion::bin_to_calibrate(const string outFileName, const unsigned in
     dataFileReader reader(inFileNames_, gVerbosityTranslate);
 
     ////64-bit word from packer
-    uint64_t word64;
+    dataword_t word64;
     while (reader.getWord(word64)) {
-        uint8_t idValue = dataFileReader::decodeID(word64);
-        int64_t dataValueSigned = dataFileReader::decodeDataValueSigned(word64);
+        uint8_t idValue = word64.chID;
+        int32_t dataValueSigned = word64.cdsSamp;
 
         //SAVE PIXEL INFORMATION HERE
         if (idValue>=channelIndex.size()) {

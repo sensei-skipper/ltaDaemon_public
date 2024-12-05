@@ -575,7 +575,7 @@ float smartSequencerHandler::calculateSequencerDuration(){
     float totalSeqDuration = 0;
     for (uint recInd = 0; recInd<fRecipeUB.size(); recInd++) {
 
-        int totalTimesToExecute = resolveIntVar(fRecipeUB[recInd].times_to_execute);
+        int64_t totalTimesToExecute = resolveIntVar(fRecipeUB[recInd].times_to_execute);
         int mother_id = fRecipeUB[recInd].upperLevel_id;
         int nestDepth = 0;
         while (mother_id!=SMART_NO_EXTRA_LEVEL_ID) {

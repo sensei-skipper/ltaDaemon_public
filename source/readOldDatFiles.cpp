@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
     vars.push_back({"NROW", to_string(nRows), ""});
 
     DataConversion data_;
+    data_.setKeepTemp(1);//don't delete the .dat files
     data_.setDeleteDats(0);//don't delete the .dat files
     data_.setWriteTimestamps(0);//don't write timestamps
     data_.setInFileNames(&inFileNames);
