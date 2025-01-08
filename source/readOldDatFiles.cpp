@@ -11,7 +11,7 @@ using namespace std;
 
 int main(int argc, char* argv[])
 {
-    loguru::init(argc, argv);
+    loguru::init(argc, argv, "-V");
     loguru::set_thread_name("readOldDatFiles");
     loguru::add_file("readOldDatFiles.log", loguru::Append, loguru::Verbosity_MAX);
     if (argc!=6) {

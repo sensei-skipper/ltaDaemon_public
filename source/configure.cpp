@@ -63,7 +63,7 @@ int commandLineArgs::processArgs(const int argc, char *argv[])
 
 int main(int argc, char* argv[])
 {
-    loguru::init(argc, argv);
+    loguru::init(argc, argv, "-V");
     loguru::set_thread_name("configure");
     char log_path[PATH_MAX];
     loguru::suggest_log_path("logs", log_path, sizeof(log_path));

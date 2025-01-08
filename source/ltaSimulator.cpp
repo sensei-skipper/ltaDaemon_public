@@ -640,7 +640,7 @@ void * sendData(void * args) {
 
 int main(int argc, char* argv[])
 {
-    loguru::init(argc, argv);
+    loguru::init(argc, argv, "-V");
     loguru::set_thread_name("ltaSimulator");
     char log_path[PATH_MAX];
     loguru::suggest_log_path("logs", log_path, sizeof(log_path));

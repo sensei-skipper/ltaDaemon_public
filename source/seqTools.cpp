@@ -60,7 +60,7 @@ int processCommandLineArgs(int argc, char *argv[]){
         }
 
         if(verbosity!=0){
-            loguru::init(argc, argv);
+            loguru::init(argc, argv, "-V");
             loguru::set_thread_name("seqTools");
         }
 

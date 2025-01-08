@@ -43,7 +43,7 @@ int tryGetLock( char const *lockName )
 int main(int argc, char* argv[])
 {
     loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
-    loguru::init(argc, argv);
+    loguru::init(argc, argv, "-V");
     loguru::add_file("masterLta.log", loguru::Append, loguru::Verbosity_MAX);
     loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
     loguru::g_internal_verbosity = 1;
