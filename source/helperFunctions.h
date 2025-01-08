@@ -8,7 +8,7 @@ bool fileExist(const char *fileName);
 
 int deleteFile(const char *fileName);
 
-void trimString(std::string &str);
+void trimString(std::string &str, const std::string &tail="");
 
 std::vector<std::string> tokenize(char * input);
 

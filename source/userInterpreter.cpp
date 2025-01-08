@@ -109,7 +109,6 @@ void UserInterpreter::change_name_outfile() {
 
 int UserInterpreter::listenForCommands()
 {
-    time_t ticks;
     char recvBuff[1025] = "";
 
     // Block until a new connection is pending.
@@ -123,13 +122,6 @@ int UserInterpreter::listenForCommands()
     }
 
     int read_size = recv(client_sock_, recvBuff , 1025 , 0);
-
-    ticks = time(NULL);
-    if (writeTimestamps_) {
-        //JT: decluttering the communication channels with the users
-	// //This is a bit of a kludge
-        //dprintf(client_sock_, "# %.24s\n", ctime(&ticks));
-    }
 
     if (read_size > 0)
     {
@@ -303,24 +295,12 @@ int UserInterpreter::talkToBoard(const string &sendBuff, const string &expResp, 
 {
     int status = 0;
 
-    // JT: don't send it by default
-    // //send user what is being sent to board
-    //dprintf(client_sock_ , "%s\n", sendBuff.c_str());
-
     //send message to board
     status = eth_->sendCmdEthe(sendBuff);
     
-    // JT: don't send it by default
-    // //update user
-    //dprintf(client_sock_ , "Command Sent\n");
-    
     //listen to board
     status = eth_->listenForBoardResponse(expResp, boardResponse, workFlowTimeOut);
-    //trimString(boardResponse);
 
-    // JT: don't send it by default. Only "get" commands or error messages should be reported
-    // //send board message to the user
-    //dprintf(client_sock_ , "%s\n", boardResponse.c_str());
     return status;
 }
 
@@ -352,9 +332,12 @@ int UserInterpreter::send_command_to_board(const string &line)
     string boardResponse;
     int status = talkToBoard(sendBuff, LTA_GEN_DONE_MESSAGE, boardResponse, SP_WORK_FLOW_TIMEOUT);
 
-    //JT: only report "get" requests done through command line
-    if (string("get").compare(line.substr(0, 3)) == 0){
-       dprintf(client_sock_ , "%s\n", boardResponse.c_str());
+    // report the response if it's not just "Done"
+    // alternatively, could report only responses to "get" commands - but this misses some useful cases, e.g. help and exec commands
+    // if (string("get").compare(line.substr(0, 3)) == 0){
+    if (status!=0) {
+        trimString(boardResponse, LTA_GEN_DONE_MESSAGE);
+        dprintf(client_sock_ , "%s\n", boardResponse.c_str());
     }
     return status;
 }
@@ -483,13 +466,13 @@ int UserInterpreter::get_seq_var(const string varName, string &varValue)
     if (sseq.isSequencerVar(varName)) { 
         varValue = sseq.resolveVar(varName);
     }
-    
+
     else if (seq.isSequencerVar(varName)) {
         seq.getSequencerVarValue(varName, varValue);
     }
 
     else {
-      return 1;
+        return 1;
     }
 
     return 0;
@@ -967,7 +950,7 @@ int UserInterpreter::cmd_start_standard_readout()
         strVars = strVarsStream.str();
 
         vector<imageVar> vars = make_var_list(strVars, (!dynamicReadout && readoutType==LTASOFT_READOUT_TYPE_STANDARD), true);
-        
+
         //Add the sequencer as a variable if using smart sequencer
         if (sseq.getSeqGood()){
             imageVar seqVar;
@@ -1257,12 +1240,12 @@ int UserInterpreter::run_seq()
             status = sendCmdToBoard("set seqStart 1\r");
         }
     } else {//smart sequencer
-        
+
         // Report seq duration
-	time_t ticks = time(NULL);
+        time_t ticks = time(NULL);
         LOG_F(INFO,"seq duration: %s", printTime(sseq.getDuration()).c_str());
         dprintf(client_sock_, "seq started:  %.24s\n", ctime(&ticks));
-	dprintf(client_sock_, "seq duration: %s\n", printTime(sseq.getDuration()).c_str());
+        dprintf(client_sock_, "seq duration: %s\n", printTime(sseq.getDuration()).c_str());
 
         // Stop sequencer.
         status = sendCmdToBoard("sek reset\r");
@@ -1335,8 +1318,8 @@ vector<imageVar> UserInterpreter::make_var_list(const string strVars, bool hduVa
         }
     }
     else for (uint i = 0; i < interVarsNamesPrev.size(); ++i){
-            vars.push_back({interVarsNamesPrev[i],"",""});
-        }
+        vars.push_back({interVarsNamesPrev[i],"",""});
+    }
 
     if (isMulti) {
         imageVar var = {"ISMULTI","1","Multi-LTA mode"};

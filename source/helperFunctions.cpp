@@ -30,11 +30,15 @@ int deleteFile(const char *fileName) {
     return unlink(fileName);
 }
 
-void trimString(std::string &str) {
+void trimString(std::string &str, const std::string &tail) {
+    // trim leading and trailing whitespace
+    // if tail is supplied, remove it from the end - this is used to remove "Done"
     const std::string whitespace = " \n\r\t";
     //trim whitespace
+    str.erase(0, str.find_first_not_of(whitespace));
+    if (tail.length()>0 && str.length()>=tail.length() && str.substr(str.length()-tail.length())==tail)
+        str.erase(str.length()-tail.length());
     str.erase(str.find_last_not_of(whitespace)+1);
-    str.erase(0,str.find_first_not_of(whitespace));
 }
 
 std::vector<std::string> tokenize(char * input) {
@@ -93,7 +97,7 @@ std::string lowercase(const std::string value)
     //Convert entire string to lowercase
     std::string lower(value);
     std::transform(lower.begin(), lower.end(), lower.begin(),
-                   [](unsigned char c){ return std::tolower(c); });
+            [](unsigned char c){ return std::tolower(c); });
     return lower;
 }
 
@@ -102,7 +106,7 @@ std::string uppercase(const std::string value)
     //Convert entire string to uppercase
     std::string upper(value);
     std::transform(upper.begin(), upper.end(), upper.begin(),
-                   [](unsigned char c){ return std::toupper(c); });
+            [](unsigned char c){ return std::toupper(c); });
     return upper;
 }
 
@@ -115,7 +119,7 @@ bool string_to_bool(const std::string value) {
     // Convert string to boolean value.
     // Input can be (case insensitive) "true", "false", "0", "1"
     std::string lower = lowercase(value);
-    
+
     if (lower.compare("true") == 0) {
         return true;
     } else if (lower.compare("false") == 0) {
@@ -168,7 +172,7 @@ std::string escapeSpecialCharacters(const std::string& input) {
             case '\\':
                 result += "\\\\";  // Replace backslash with \\
                 break;
-            // Add cases for other special characters as needed
+                // Add cases for other special characters as needed
             default:
                 result += c;  // Keep other characters as is
                 break;
