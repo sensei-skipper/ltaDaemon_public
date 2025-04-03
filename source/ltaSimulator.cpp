@@ -552,16 +552,18 @@ void * sendData(void * args) {
     int sampsSent = 0;//used to track pixel addresses
 
     int packCounter = 0;
-    int maxCountValue = 15;
     uint8_t packType = 0;
-    int counterValue = 0;
+    long counterValue = 0;
     char buffer[LTA_SOFT_DATABUFF_SIZE];
+    CHECK_LE_F(2+nch*8*SIMULATOR_SAMPS_PER_PACKET, LTA_SOFT_DATABUFF_SIZE, "packet is longer than the daemon receive buffer");
+
     while (sampsToSend>0) {
         int sampsThisPacket = SIMULATOR_SAMPS_PER_PACKET;
         if (sampsToSend<sampsThisPacket) {
             sampsThisPacket = sampsToSend;
         }
         sampsToSend -= sampsThisPacket;
+        memset(buffer, 0, 2 + nch*8*sampsThisPacket);
 
         //standard:
         //packType byte, not used?
@@ -580,50 +582,33 @@ void * sendData(void * args) {
         //header = [55 downto 54], purpose unknown
         //data = [17 downto 0], 18-bit signed int
 
-        int nBytes = 0;
+        uint8_t header = 1;
 
+        int nBytes = 0;
+        int data, this_data, iCol, iRow;
+        uint8_t id_byte;
         buffer[nBytes++] = packType;
         buffer[nBytes++] = packCounter;
         for (int iPixel=0;iPixel<sampsThisPacket;iPixel++) {
-            //int iSamp = sampsSent % nsamp;
-            int iCol = (sampsSent/nsamp) % ncol;
-            int iRow = (sampsSent/nsamp)/ncol;
+            iCol = (sampsSent/nsamp) % ncol;
+            iRow = (sampsSent/nsamp) / ncol;
+            data = ((iCol % 100) > (iRow % 100))?100:-100;
             for (int iCh=ch0;iCh<ch0+nch;iCh++) {
-                uint8_t id_byte = iCh;
-                id_byte += ((counterValue & 0xF) << 4);
-                int data;
-                uint8_t header;
                 switch (dataArgs->readType) {
                     case eStandard:
-                        data = ((iCol % 100) > (iRow % 100))?100:-100;
-                        data += iCh;
-                        for (int j=0;j<4;j++) {
-                            buffer[nBytes++] = ((data >> 8*j) & 0xFF);
-                        }
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = id_byte;
+                        this_data = data + iCh;
+                        memcpy(buffer+nBytes, &this_data, 4);
+                        //skip 4 data bytes, plus 3 zero bytes
                         break;
                     case eRaw:
-                        header = 1;
-                        data = ((iCol % 100) > (iRow % 100))?100:-100;
-                        if (data < 0) data += pow(2, ADC_NUM_BITS);//two's complement
-                        for (int j=0;j<3;j++) {
-                            buffer[nBytes++] = ((data >> 8*j) & 0xFF);
-                        }
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = 0;
-                        buffer[nBytes++] = header << 6;
-                        buffer[nBytes++] = id_byte;
+                        memcpy(buffer+nBytes, &data, 3);
+                        //skip 3 data bytes, plus 3 zero bytes
+                        buffer[nBytes+6] = header << 6;
                         break;
                 }
-
+                buffer[nBytes+7] = ((counterValue % 16) << 4) + iCh;
+                nBytes += 8;
                 counterValue++;
-                if (counterValue>maxCountValue) counterValue = 0;
-
-                CHECK_LE_F(nBytes, LTA_SOFT_DATABUFF_SIZE, "packet is longer than the daemon receive buffer");
             }
             sampsSent++;
         }
