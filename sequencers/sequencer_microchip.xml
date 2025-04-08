@@ -33,7 +33,6 @@
     <state name="STATE_7"    val="V1A | V1B |       V3A | V3B |       H1B |       H3A |                   RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
     <state name="STATE_8"    val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
     <state name="STATE_9"    val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
-    <state name="STATE_10"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
     <state name="STATE_10RG" val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                         OGA | OGB | DGA | DGB | TGA | TGB            "/>
     <state name="STATE_10RB" val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |                                     DGA | DGB | TGA | TGB            "/>
 
@@ -44,10 +43,9 @@
     <state name="STATE_15"   val="            V2C | V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB                        "/>
     <state name="STATE_16"   val="                  V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
 
-    <state name="STATE_8C"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1      "/>
+    <state name="STATE_8B"   val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB | HD1      "/>
 
     <state name="STATE_10A"  val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B |             RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB |       HD2"/>
-    <state name="STATE_10B"  val="V1A | V1B |       V3A | V3B | H1A | H1B |       H3A | H3B | SWA | SWB | RGA | RGB | OGA | OGB | DGA | DGB | TGA | TGB            "/>
 
     <var name="NROW" val="650"/>
     <var name="NCOL" val="700"/>
